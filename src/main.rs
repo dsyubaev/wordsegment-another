@@ -10,6 +10,9 @@ fn main() -> std::io::Result<()> {
     assert!(unigrams.contains_key("test"));
     assert!(bigrams.contains_key("in the"));
 
+    let seg = wordsegment_another::Segmentator::new("unigrams.txt", "bigrams.txt", "words.txt");
+    let a = seg.words[0..3].to_vec();
+    println!("{:?}", a);
     //println!("{:?}", x?);
     let file = File::open("unigrams.txt")?;
 
