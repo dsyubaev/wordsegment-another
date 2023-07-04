@@ -1,33 +1,28 @@
-use std::fs::File;
-use std::io::{BufRead, BufReader};
+extern crate env_logger;
+use std::time::Instant;
+
+use log::{info, SetLoggerError};
 use wordsegment_another;
 
-fn main() -> std::io::Result<()> {
-    // Open the file for reading
-    let unigrams = wordsegment_another::parse("unigrams.txt").unwrap();
-    let bigrams = wordsegment_another::parse("bigrams.txt").unwrap();
+fn main() -> Result<(), SetLoggerError> {
+    env_logger::builder().format_timestamp_millis().init();
 
-    assert!(unigrams.contains_key("test"));
-    assert!(bigrams.contains_key("in the"));
+    info!("Create Segmentator");
+    let start = Instant::now();
 
     let seg = wordsegment_another::Segmentator::new("unigrams.txt", "bigrams.txt", "words.txt");
+
+    let duration = start.elapsed();
+    info!("Done Segmentator duration {:?}", duration);
+
     let a = seg.words[0..3].to_vec();
-    println!("{:?}", a);
-    //println!("{:?}", x?);
-    let file = File::open("unigrams.txt")?;
+    info!("{:?}", a);
 
-    // Create a buffered reader to read the file
-    let reader = BufReader::new(file);
+    let x = seg.score("the", Some("in"));
+    info!("in the score {:?}", x);
 
-    // Read the file line by line
-    let mut n = 0;
-    for line in reader.lines() {
-        println!("{}", line?);
-        n += 1;
-        if n > 10 {
-            break;
-        }
-    }
+    let x = seg.score("the", None);
+    info!("Done scoreing {:?}", x);
 
     Ok(())
 }

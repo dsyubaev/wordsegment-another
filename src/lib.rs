@@ -2,15 +2,19 @@ pub fn add(left: usize, right: usize) -> usize {
     left + right
 }
 
+use std::cmp;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Error};
+use std::iter::Map;
+use std::ops::Range;
+
+const TOTAL: f64 = 1024908267229_f64;
+const LIMIT: usize = 24;
 
 pub struct Segmentator {
     unigrams: HashMap<String, i64>,
     bigrams: HashMap<String, i64>,
-    total: f64,
-    limit: i32,
     pub words: Vec<String>,
 }
 
@@ -19,13 +23,9 @@ impl Segmentator {
         let unigrams = parse(unigrams_file).unwrap();
         let bigrams = parse(bigrams_file).unwrap();
         let words = parse_words(words_file).unwrap();
-        let total: f64 = 1024908267229_f64;
-        let limit: i32 = 24;
         Self {
             unigrams,
             bigrams,
-            total,
-            limit,
             words,
         }
     }
@@ -35,17 +35,17 @@ impl Segmentator {
         match previous {
             None => {
                 if self.unigrams.contains_key(word) {
-                    self.unigrams.get(word).unwrap().to_owned() as f64 / self.total
+                    self.unigrams.get(word).unwrap().to_owned() as f64 / TOTAL
                 } else {
                     let base: i32 = 10;
-                    10_f64 / (self.total * (base.pow(word.len() as u32) as f64))
+                    10_f64 / (TOTAL * (base.pow(word.len() as u32) as f64))
                 }
             }
             Some(previous) => {
                 let bigram = format!("{} {}", previous, word);
                 if self.bigrams.contains_key(bigram.as_str()) & self.unigrams.contains_key(previous)
                 {
-                    (self.bigrams.get(bigram.as_str()).unwrap().to_owned() as f64 / self.total)
+                    (self.bigrams.get(bigram.as_str()).unwrap().to_owned() as f64 / TOTAL)
                         / self.score(previous, None)
                 } else {
                     self.score(word, None)
@@ -53,6 +53,31 @@ impl Segmentator {
             }
         }
     }
+
+    // Return iterator of words that is the best segmenation of `text`.
+    pub fn isegment(&self, text: &str) -> Vec<String> {
+        let res: Vec<String> = Vec::new();
+        res
+    }
+}
+
+/// Yield `(prefix, suffix)` pairs from `text`.
+///     def divide(self, text):
+///         for pos in range(1, min(len(text), self.limit) + 1):
+///             yield (text[:pos], text[pos:])
+///
+pub fn devide<'a>(text: &'a str) -> impl Iterator<Item = (&str, &str)> {
+    let split_size = cmp::min(LIMIT, text.len());
+
+    (1..split_size).map(|i| (&text[0..i], &text[i..]))
+}
+
+/// Return `text` lower-cased with non-alphanumeric characters removed.
+pub fn clean(text: &str) -> String {
+    text.to_lowercase()
+        .chars()
+        .filter(|c| c.is_alphabetic())
+        .collect()
 }
 
 pub fn parse_words(path: &str) -> Result<Vec<String>, Error> {
@@ -93,5 +118,25 @@ mod tests {
     fn it_works() {
         let result = add(2, 2);
         assert_eq!(result, 4);
+    }
+
+    #[test]
+    fn test_clean() {
+        assert_eq!(clean("Today is the 14th of July"), "todayisthethofjuly");
+
+        assert_eq!(clean("  "), "");
+
+        assert_eq!(clean("a14_b"), "ab");
+
+        assert_eq!(clean("Can't buy me love!"), "cantbuymelove")
+    }
+
+    #[test]
+    fn test_devide() {
+        let b: Vec<(&str, &str)> = devide("ab").collect();
+        assert_eq!(b, [("a", "b")]);
+
+        let b: Vec<(&str, &str)> = devide("abc").collect();
+        assert_eq!(b, [("a", "bc"), ("ab", "c")])
     }
 }
