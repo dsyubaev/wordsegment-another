@@ -2,9 +2,11 @@ pub fn add(left: usize, right: usize) -> usize {
     left + right
 }
 
+use log::info;
 use std::cmp;
+use std::cmp::min;
 use std::collections::HashMap;
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Error};
 use std::iter::Map;
 use std::ops::Range;
@@ -16,6 +18,7 @@ pub struct Segmentator {
     unigrams: HashMap<String, i64>,
     bigrams: HashMap<String, i64>,
     pub words: Vec<String>,
+    memo: HashMap<(String, String), (f64, Vec<String>)>,
 }
 
 impl Segmentator {
@@ -23,15 +26,18 @@ impl Segmentator {
         let unigrams = parse(unigrams_file).unwrap();
         let bigrams = parse(bigrams_file).unwrap();
         let words = parse_words(words_file).unwrap();
+        let memo = HashMap::new();
         Self {
             unigrams,
             bigrams,
             words,
+            memo,
         }
     }
 
     /// Score `word` in the context of `previous` word.
     pub fn score(&self, word: &str, previous: Option<&str>) -> f64 {
+        dbg!(word, previous);
         match previous {
             None => {
                 if self.unigrams.contains_key(word) {
@@ -54,9 +60,72 @@ impl Segmentator {
         }
     }
 
-    // Return iterator of words that is the best segmenation of `text`.
-    pub fn isegment(&self, text: &str) -> Vec<String> {
+    pub fn search(&mut self, text: &str, previous: Option<&str>) -> (f64, Vec<String>) {
         let res: Vec<String> = Vec::new();
+        if text.is_empty() {
+            println!("text is EMPTY !!");
+            return (0_f64, res);
+        }
+
+        let mut current_max = f64::MIN;
+        let mut current_res: Vec<String> = Vec::new();
+
+        let mut words: Vec<String> = Vec::new();
+        for (prefix, suffix) in devide(text) {
+            let prev = match previous {
+                None => "<s>",
+                Some(val) => val,
+            };
+            let prefix_score = (self.score(prefix, Some(prev))).log10();
+            let pair = (suffix.to_string(), prefix.to_string());
+            if !&self.memo.contains_key(&pair) {
+                let v = (&self.search(suffix, Some(prefix))).to_owned();
+                &self.memo.insert(pair.to_owned(), v);
+            }
+            //dbg!(&self.memo);
+            let (suffix_score, suffix_words) = (&self.memo.get(&pair)).unwrap();
+            let total_score = suffix_score + prefix_score;
+            words.clear();
+            words.push(prefix.to_string());
+            words.extend(suffix_words.to_vec().into_iter());
+
+            if total_score > current_max {
+                current_max = total_score.to_owned();
+                current_res = words.clone();
+                println!(
+                    "total_score > current_max {:?} {:?}",
+                    current_max, current_res
+                )
+            }
+        }
+        (current_max, current_res)
+    }
+    // Return iterator of words that is the best segmenation of `text`.
+    pub fn segment(&mut self, text: &str) -> Vec<String> {
+        let mut res: Vec<String> = Vec::new();
+
+        let clean_text = clean(text);
+        let size: usize = 250;
+        let mut prefix: String = "".to_string();
+
+        let words_skip_size: usize = 5;
+
+        for offset in (0..clean_text.len()).step_by(size) {
+            info!("Get offset value {:?}", offset);
+            let chunk = &clean_text[offset..min(clean_text.len(), offset + size)];
+            dbg!(chunk);
+
+            prefix.push_str(chunk);
+            let (_, chunk_words) = &self.search(prefix.as_str(), None);
+            dbg!(chunk_words);
+
+            prefix = join_last_n_words(chunk_words, words_skip_size);
+
+            // copy all except last words_skip_size elements
+            insert_to_vec(&chunk_words, &mut res, words_skip_size);
+        }
+        let (_, prefix_words) = &self.search(prefix.as_str(), None);
+        insert_to_vec(&prefix_words, &mut res, 0);
         res
     }
 }
@@ -67,7 +136,7 @@ impl Segmentator {
 ///             yield (text[:pos], text[pos:])
 ///
 pub fn devide<'a>(text: &'a str) -> impl Iterator<Item = (&str, &str)> {
-    let split_size = cmp::min(LIMIT, text.len());
+    let split_size = min(LIMIT, text.len()) + 1;
 
     (1..split_size).map(|i| (&text[0..i], &text[i..]))
 }
@@ -110,6 +179,36 @@ pub fn parse(path: &str) -> Result<HashMap<String, i64>, Error> {
     Ok(map)
 }
 
+/// Helper function to concat last n elements to String
+/// ["a", "b"]
+pub fn join_last_n_words(x: &Vec<String>, n: usize) -> String {
+    x.iter()
+        .rev()
+        .take(n)
+        .rev()
+        .map(|s| s.to_string())
+        .collect::<Vec<String>>()
+        .join("")
+}
+
+/// Insert to destionation vector elements, except the last of skip_last size
+/// # Arguments
+///
+/// * src - The source vec copy from
+/// * dest - The destionation vector copy to
+/// * skip_last - Number of elements from tail to skip
+pub fn insert_to_vec(src: &Vec<String>, dest: &mut Vec<String>, skip_last: usize) -> () {
+    if src.len() > skip_last {
+        let max_ind = src.len() - skip_last;
+        for (i, el) in src.iter().enumerate() {
+            if i >= max_ind {
+                break;
+            }
+            dest.push(el.to_string());
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -134,9 +233,44 @@ mod tests {
     #[test]
     fn test_devide() {
         let b: Vec<(&str, &str)> = devide("ab").collect();
-        assert_eq!(b, [("a", "b")]);
+        assert_eq!(b, [("a", "b"), ("ab", "")]);
 
         let b: Vec<(&str, &str)> = devide("abc").collect();
-        assert_eq!(b, [("a", "bc"), ("ab", "c")])
+        assert_eq!(b, [("a", "bc"), ("ab", "c"), ("abc", "")])
+    }
+
+    #[test]
+    fn test_join_last_n_words() {
+        let mut v: Vec<String> = Vec::new();
+        v.push("a".to_string());
+        v.push("b".to_string());
+        v.push("c".to_string());
+        v.push("d".to_string());
+        //dbg!(v);
+
+        let g: String = join_last_n_words(&v, 2);
+        assert_eq!("cd", g);
+
+        //let x = vec!["a", "b", "c"];
+        //assert_eq!("bc", join_last_n_words(x, 2));
+    }
+    #[test]
+    fn test_copy_vec() {
+        let mut v: Vec<String> = Vec::new();
+        v.push("a".to_string());
+        v.push("b".to_string());
+        v.push("c".to_string());
+        let mut d: Vec<String> = Vec::new();
+        insert_to_vec(&mut v, &mut d, 2);
+        assert_eq!(vec!["a",], d);
+
+        let mut d: Vec<String> = Vec::new();
+        insert_to_vec(&mut v, &mut d, 3);
+        assert_eq!(Vec::<String>::new(), d);
+
+        let mut d: Vec<String> = Vec::new();
+        d.push("f".to_string());
+        insert_to_vec(&mut v, &mut d, 2);
+        assert_eq!(vec!["f", "a",], d);
     }
 }
