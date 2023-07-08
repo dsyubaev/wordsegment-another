@@ -35,7 +35,7 @@ impl Segmentator {
                 if self.unigrams.contains_key(word) {
                     self.unigrams.get(word).unwrap().to_owned() as f64 / TOTAL
                 } else {
-                    let base: i32 = 10;
+                    let base: i64 = 10;
                     10_f64 / (TOTAL * (base.pow(word.len() as u32) as f64))
                 }
             }

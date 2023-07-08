@@ -10,7 +10,7 @@ fn main() -> Result<(), SetLoggerError> {
     info!("Create Segmentator");
     let start = Instant::now();
 
-    let mut seg = wordsegment_another::Segmentator::new(
+    let seg = wordsegment_another::Segmentator::new(
         "./data/unigrams.txt",
         "./data/bigrams.txt",
         "./data/words.txt",
@@ -28,7 +28,7 @@ fn main() -> Result<(), SetLoggerError> {
     let x = seg.score("the", None);
     info!("Done scoreing {:?}", x);
 
-    let x = seg.segment("thes");
+    let x = seg.segment("choosespain");
     info!("Done segment {:?}", x);
 
     Ok(())
