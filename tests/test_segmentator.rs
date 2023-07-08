@@ -90,3 +90,5 @@ fn test_segment_7() {
 
     assert_eq!(seg.segment(join(result.clone()).as_str()), result);
 }
+
+// TODO add more test, fix painc
