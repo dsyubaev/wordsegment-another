@@ -2,14 +2,10 @@ pub fn add(left: usize, right: usize) -> usize {
     left + right
 }
 
-use log::info;
-use std::cmp;
 use std::cmp::min;
 use std::collections::HashMap;
-use std::fs::{File, OpenOptions};
+use std::fs::File;
 use std::io::{BufRead, BufReader, Error};
-use std::iter::Map;
-use std::ops::Range;
 
 const TOTAL: f64 = 1024908267229_f64;
 const LIMIT: usize = 24;
@@ -18,7 +14,6 @@ pub struct Segmentator {
     unigrams: HashMap<String, i64>,
     bigrams: HashMap<String, i64>,
     pub words: Vec<String>,
-    memo: HashMap<(String, String), (f64, Vec<String>)>,
 }
 
 impl Segmentator {
@@ -26,18 +21,15 @@ impl Segmentator {
         let unigrams = parse(unigrams_file).unwrap();
         let bigrams = parse(bigrams_file).unwrap();
         let words = parse_words(words_file).unwrap();
-        let memo = HashMap::new();
         Self {
             unigrams,
             bigrams,
             words,
-            memo,
         }
     }
 
     /// Score `word` in the context of `previous` word.
     pub fn score(&self, word: &str, previous: Option<&str>) -> f64 {
-        dbg!(word, previous);
         match previous {
             None => {
                 if self.unigrams.contains_key(word) {
@@ -60,10 +52,14 @@ impl Segmentator {
         }
     }
 
-    pub fn search(&mut self, text: &str, previous: Option<&str>) -> (f64, Vec<String>) {
+    pub fn search(
+        &self,
+        text: &str,
+        previous: Option<&str>,
+        memo: &mut HashMap<(String, String), (f64, Vec<String>)>,
+    ) -> (f64, Vec<String>) {
         let res: Vec<String> = Vec::new();
         if text.is_empty() {
-            println!("text is EMPTY !!");
             return (0_f64, res);
         }
 
@@ -78,12 +74,12 @@ impl Segmentator {
             };
             let prefix_score = (self.score(prefix, Some(prev))).log10();
             let pair = (suffix.to_string(), prefix.to_string());
-            if !&self.memo.contains_key(&pair) {
-                let v = (&self.search(suffix, Some(prefix))).to_owned();
-                &self.memo.insert(pair.to_owned(), v);
+            if !&memo.contains_key(&pair) {
+                let v = (&self.search(suffix, Some(prefix), memo)).to_owned();
+                &memo.insert(pair.to_owned(), v);
             }
             //dbg!(&self.memo);
-            let (suffix_score, suffix_words) = (&self.memo.get(&pair)).unwrap();
+            let (suffix_score, suffix_words) = (&memo.get(&pair)).unwrap();
             let total_score = suffix_score + prefix_score;
             words.clear();
             words.push(prefix.to_string());
@@ -92,16 +88,13 @@ impl Segmentator {
             if total_score > current_max {
                 current_max = total_score.to_owned();
                 current_res = words.clone();
-                println!(
-                    "total_score > current_max {:?} {:?}",
-                    current_max, current_res
-                )
             }
         }
         (current_max, current_res)
     }
     // Return iterator of words that is the best segmenation of `text`.
-    pub fn segment(&mut self, text: &str) -> Vec<String> {
+    pub fn segment(&self, text: &str) -> Vec<String> {
+        let mut memo: HashMap<(String, String), (f64, Vec<String>)> = HashMap::new();
         let mut res: Vec<String> = Vec::new();
 
         let clean_text = clean(text);
@@ -111,20 +104,16 @@ impl Segmentator {
         let words_skip_size: usize = 5;
 
         for offset in (0..clean_text.len()).step_by(size) {
-            info!("Get offset value {:?}", offset);
             let chunk = &clean_text[offset..min(clean_text.len(), offset + size)];
-            dbg!(chunk);
 
             prefix.push_str(chunk);
-            let (_, chunk_words) = &self.search(prefix.as_str(), None);
-            dbg!(chunk_words);
-
+            let (_, chunk_words) = &self.search(prefix.as_str(), None, &mut memo);
             prefix = join_last_n_words(chunk_words, words_skip_size);
 
             // copy all except last words_skip_size elements
             insert_to_vec(&chunk_words, &mut res, words_skip_size);
         }
-        let (_, prefix_words) = &self.search(prefix.as_str(), None);
+        let (_, prefix_words) = &self.search(prefix.as_str(), None, &mut memo);
         insert_to_vec(&prefix_words, &mut res, 0);
         res
     }
