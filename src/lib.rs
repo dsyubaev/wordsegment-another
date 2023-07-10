@@ -1,7 +1,3 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
-
 use std::cmp::min;
 use std::collections::HashMap;
 use std::fs::File;
@@ -201,12 +197,6 @@ pub fn insert_to_vec(src: &Vec<String>, dest: &mut Vec<String>, skip_last: usize
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
 
     #[test]
     fn test_clean() {
