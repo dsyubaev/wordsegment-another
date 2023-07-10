@@ -1,18 +1,17 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
-
+use num_bigfloat::BigFloat;
 use std::cmp::min;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Error};
 
-const TOTAL: u64 = 1024908267229_u64;
+use log::debug;
+
+const TOTAL: f64 = 1024908267229_f64;
 const LIMIT: usize = 24;
 
 pub struct Segmentator {
-    unigrams: HashMap<String, i64>,
-    bigrams: HashMap<String, i64>,
+    pub unigrams: HashMap<String, i64>,
+    pub bigrams: HashMap<String, i64>,
     pub words: Vec<String>,
 }
 
@@ -28,23 +27,26 @@ impl Segmentator {
         }
     }
 
-    /// Score `word` in the context of `previous` word.
-    pub fn score(&self, word: &str, previous: Option<&str>) -> f64 {
+    pub fn score(&self, word: &str, previous: Option<&str>) -> BigFloat {
+        let total = BigFloat::from_f64(TOTAL);
         match previous {
             None => {
                 if self.unigrams.contains_key(word) {
-                    self.unigrams.get(word).unwrap().to_owned() as f64 / (TOTAL as f64)
+                    let unigram_val =
+                        BigFloat::from_i64(self.unigrams.get(word).unwrap().to_owned());
+                    unigram_val / total
                 } else {
-                    let x = (10_u64).saturating_pow(word.len() as u32);
-                    10_f64 / (TOTAL.saturating_mul(x) as f64)
+                    scorei(word.len() as i32)
                 }
             }
             Some(previous) => {
                 let bigram = format!("{} {}", previous, word);
+                //debug!("bigram={:?}", bigram);
                 if self.bigrams.contains_key(bigram.as_str()) & self.unigrams.contains_key(previous)
                 {
-                    (self.bigrams.get(bigram.as_str()).unwrap().to_owned() as f64 / TOTAL as f64)
-                        / self.score(previous, None)
+                    let bigram_val =
+                        BigFloat::from_i64(self.bigrams.get(bigram.as_str()).unwrap().to_owned());
+                    (bigram_val / total) / self.score(previous, None)
                 } else {
                     self.score(word, None)
                 }
@@ -68,15 +70,17 @@ impl Segmentator {
 
         let mut words: Vec<String> = Vec::new();
         for (prefix, suffix) in devide(text) {
+            debug!("{:?} {:?}", prefix, suffix);
+
             let prev = match previous {
                 None => "<s>",
                 Some(val) => val,
             };
-            let prefix_score = (self.score(prefix, Some(prev))).log10();
+            let prefix_score = (self.score(prefix, Some(prev))).log10().to_f64();
             let pair = (suffix.to_string(), prefix.to_string());
             if !&memo.contains_key(&pair) {
                 let v = (&self.search(suffix, Some(prefix), memo)).to_owned();
-                &memo.insert(pair.to_owned(), v);
+                let _ = &memo.insert(pair.to_owned(), v);
             }
             //dbg!(&self.memo);
             let (suffix_score, suffix_words) = (&memo.get(&pair)).unwrap();
@@ -90,10 +94,15 @@ impl Segmentator {
                 current_res = words.clone();
             }
         }
+        debug!(
+            "ans max are {:?} {:?} for text {:?} {:?}",
+            current_max, current_res, text, previous
+        );
         (current_max, current_res)
     }
     // Return iterator of words that is the best segmenation of `text`.
     pub fn segment(&self, text: &str) -> Vec<String> {
+        debug!("segment called with text={:?}", text);
         let mut memo: HashMap<(String, String), (f64, Vec<String>)> = HashMap::new();
         let mut res: Vec<String> = Vec::new();
 
@@ -106,10 +115,13 @@ impl Segmentator {
         for offset in (0..clean_text.len()).step_by(size) {
             let chunk = &clean_text[offset..min(clean_text.len(), offset + size)];
 
+            debug!("chunk={:?}", chunk);
+
             prefix.push_str(chunk);
             let (_, chunk_words) = &self.search(prefix.as_str(), None, &mut memo);
             prefix = join_last_n_words(chunk_words, words_skip_size);
 
+            debug!("prefix={:?}", prefix);
             // copy all except last words_skip_size elements
             insert_to_vec(&chunk_words, &mut res, words_skip_size);
         }
@@ -198,15 +210,15 @@ pub fn insert_to_vec(src: &Vec<String>, dest: &mut Vec<String>, skip_last: usize
     }
 }
 
+pub fn scorei(i: i32) -> BigFloat {
+    let total = BigFloat::from_f64(TOTAL);
+    let x = BigFloat::from_i32(i);
+    BigFloat::from_i32(10) / (total * BigFloat::from_i32(10).pow(&x))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
 
     #[test]
     fn test_clean() {

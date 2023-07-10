@@ -13,6 +13,7 @@ name = "wordsegment_another"
 [dependencies]
 log = "0.4.19"
 env_logger="0.10.0"
+num-bigfloat = "1.6.2"
 
 [dependencies.pyo3]
 version = "0.18.0"
