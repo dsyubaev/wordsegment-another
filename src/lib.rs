@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Error};
 
-const TOTAL: f64 = 1024908267229_f64;
+const TOTAL: u64 = 1024908267229_u64;
 const LIMIT: usize = 24;
 
 pub struct Segmentator {
@@ -33,17 +33,17 @@ impl Segmentator {
         match previous {
             None => {
                 if self.unigrams.contains_key(word) {
-                    self.unigrams.get(word).unwrap().to_owned() as f64 / TOTAL
+                    self.unigrams.get(word).unwrap().to_owned() as f64 / (TOTAL as f64)
                 } else {
-                    let base: i64 = 10;
-                    10_f64 / (TOTAL * (base.pow(word.len() as u32) as f64))
+                    let x = (10_u64).saturating_pow(word.len() as u32);
+                    10_f64 / (TOTAL.saturating_mul(x) as f64)
                 }
             }
             Some(previous) => {
                 let bigram = format!("{} {}", previous, word);
                 if self.bigrams.contains_key(bigram.as_str()) & self.unigrams.contains_key(previous)
                 {
-                    (self.bigrams.get(bigram.as_str()).unwrap().to_owned() as f64 / TOTAL)
+                    (self.bigrams.get(bigram.as_str()).unwrap().to_owned() as f64 / TOTAL as f64)
                         / self.score(previous, None)
                 } else {
                     self.score(word, None)
