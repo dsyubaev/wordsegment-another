@@ -1,4 +1,3 @@
 /target
 /Cargo.lock
-bigrams.txt
-unigrams.txt
+.idea

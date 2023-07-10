@@ -18,3 +18,6 @@ env_logger="0.10.0"
 version = "0.18.0"
 # "abi3-py37" tells pyo3 (and maturin) to build using the stable ABI with minimum Python version 3.7
 features = ["abi3-py37"]
+
+[dev-dependencies]
+lazy_static = "1.4"
