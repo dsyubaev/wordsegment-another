@@ -6,33 +6,38 @@ use std::io::{BufRead, BufReader, Error};
 
 use log::debug;
 
-use pyo3::prelude::*;
+// use pyo3::prelude::*;
 
 /// Formats the sum of two numbers as string.
-#[pyfunction]
-fn sum_as_string(a: usize, b: usize) -> PyResult<String> {
-    Ok((a + b).to_string())
-}
-
-/// A Python module implemented in Rust. The name of this function must match
-/// the `lib.name` setting in the `Cargo.toml`, else Python will not be able to
-/// import the module.
-#[pymodule]
-fn wordsegment_another(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(sum_as_string, m)?)?;
-    Ok(())
-}
+// #[pyfunction]
+// fn sum_as_string(a: usize, b: usize) -> PyResult<String> {
+//     Ok((a + b).to_string())
+// }
+//
+// /// A Python module implemented in Rust. The name of this function must match
+// /// the `lib.name` setting in the `Cargo.toml`, else Python will not be able to
+// /// import the module.
+// #[pymodule]
+// fn wordsegment_another(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+//     m.add_function(wrap_pyfunction!(sum_as_string, m)?)?;
+//     m.add_class::<Segmentator>()?;
+//     Ok(())
+// }
 
 const TOTAL: f64 = 1024908267229_f64;
 const LIMIT: usize = 24;
 
+//#[pyclass]
 pub struct Segmentator {
     pub unigrams: HashMap<String, i64>,
     pub bigrams: HashMap<String, i64>,
     pub words: Vec<String>,
 }
 
+//#[pymethods]
 impl Segmentator {
+    // #[new]
+    // #[pyo3(signature = (unigrams_file, bigrams_file, words_file))]
     pub fn new(unigrams_file: &str, bigrams_file: &str, words_file: &str) -> Self {
         let unigrams = parse(unigrams_file).unwrap();
         let bigrams = parse(bigrams_file).unwrap();
@@ -44,7 +49,12 @@ impl Segmentator {
         }
     }
 
-    pub fn score(&self, word: &str, previous: Option<&str>) -> BigFloat {
+    pub fn score(&self, word: &str, previous: Option<&str>) -> f64 {
+        let v = &self.score_bigfloat(word, previous).log10();
+        v.to_f64()
+    }
+
+    pub fn score_bigfloat(&self, word: &str, previous: Option<&str>) -> BigFloat {
         let total = BigFloat::from_f64(TOTAL);
         match previous {
             None => {
@@ -53,7 +63,8 @@ impl Segmentator {
                         BigFloat::from_i64(self.unigrams.get(word).unwrap().to_owned());
                     unigram_val / total
                 } else {
-                    scorei(word.len() as i32)
+                    let word_len = BigFloat::from_i32(word.len() as i32);
+                    BigFloat::from_i32(10) / (total * BigFloat::from_i32(10).pow(&word_len))
                 }
             }
             Some(previous) => {
@@ -63,15 +74,15 @@ impl Segmentator {
                 {
                     let bigram_val =
                         BigFloat::from_i64(self.bigrams.get(bigram.as_str()).unwrap().to_owned());
-                    (bigram_val / total) / self.score(previous, None)
+                    (bigram_val / total) / self.score_bigfloat(previous, None)
                 } else {
-                    self.score(word, None)
+                    self.score_bigfloat(word, None)
                 }
             }
         }
     }
 
-    pub fn search(
+    fn search(
         &self,
         text: &str,
         previous: Option<&str>,
@@ -93,7 +104,7 @@ impl Segmentator {
                 None => "<s>",
                 Some(val) => val,
             };
-            let prefix_score = (self.score(prefix, Some(prev))).log10().to_f64();
+            let prefix_score = self.score(prefix, Some(prev));
             let pair = (suffix.to_string(), prefix.to_string());
             if !&memo.contains_key(&pair) {
                 let v = (&self.search(suffix, Some(prefix), memo)).to_owned();
@@ -227,11 +238,6 @@ pub fn insert_to_vec(src: &Vec<String>, dest: &mut Vec<String>, skip_last: usize
     }
 }
 
-pub fn scorei(i: i32) -> BigFloat {
-    let total = BigFloat::from_f64(TOTAL);
-    let x = BigFloat::from_i32(i);
-    BigFloat::from_i32(10) / (total * BigFloat::from_i32(10).pow(&x))
-}
 
 #[cfg(test)]
 mod tests {
