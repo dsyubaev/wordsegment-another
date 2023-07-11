@@ -2,8 +2,6 @@ mod common;
 
 extern crate env_logger;
 
-use log::info;
-
 fn join(result: Vec<&str>) -> String {
     result
         .into_iter()

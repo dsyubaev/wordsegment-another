@@ -8,7 +8,7 @@ edition = "2021"
 [lib]
 name = "wordsegment_another"
 # "cdylib" is necessary to produce a shared library for Python to import from.
-# crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 log = "0.4.19"
@@ -16,9 +16,7 @@ env_logger="0.10.0"
 num-bigfloat = "1.6.2"
 
 [dependencies.pyo3]
-version = "0.18.0"
-# "abi3-py37" tells pyo3 (and maturin) to build using the stable ABI with minimum Python version 3.7
-features = ["abi3-py37"]
+version = "0.19.1"
 
 [dev-dependencies]
 lazy_static = "1.4"
