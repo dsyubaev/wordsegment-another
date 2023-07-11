@@ -17,12 +17,6 @@ num-bigfloat = "1.6.2"
 
 [dependencies.pyo3]
 version = "0.19.1"
-## "abi3-py37" tells pyo3 (and maturin) to build using the stable ABI with minimum Python version 3.7
-#features = ["abi3-py37"]
-
-#[features]
-#extension-module = ["pyo3/extension-module"]
-#default = ["extension-module"]
 
 [dev-dependencies]
 lazy_static = "1.4"
