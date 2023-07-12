@@ -1,6 +1,8 @@
 mod common;
 
 extern crate env_logger;
+use log::info;
+use std::time::{Duration, Instant};
 
 fn join(result: Vec<&str>) -> String {
     result
@@ -103,6 +105,32 @@ fn test_segment_8() {
     ];
 
     assert_eq!(seg.segment(join(result.clone()).as_str()), result);
+}
+
+#[test]
+#[ignore]
+fn test_segment_time() {
+    // using common code.
+    let seg = common::segmentator();
+    env_logger::builder().format_timestamp_millis().init();
+    info!("Done init segmentator");
+    let mut acc = 0.0;
+    let mut n = 0_u8;
+    for _ in 0..5 {
+        let start = Instant::now();
+        let result = vec![
+            "it", "was", "a", "bright", "cold", "day", "in", "april", "and", "the", "clocks",
+            "were", "striking", "thirteen",
+        ];
+
+        let _ = seg.segment(join(result.clone()).as_str());
+        // assert_eq!(, result);
+        let duration = start.elapsed();
+        acc += duration.as_secs_f32();
+        n += 1;
+        info!("Done test duration={:?}", duration);
+    }
+    info!("Avg time={:?}", acc / n as f32);
 }
 
 #[test]

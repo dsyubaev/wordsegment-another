@@ -1,10 +1,8 @@
-use num_bigfloat::BigFloat;
+use log::debug;
 use std::cmp::min;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Error};
-
-use log::debug;
 
 use pyo3::prelude::*;
 
@@ -24,22 +22,16 @@ const LIMIT: usize = 24;
 pub struct Segmentator {
     pub unigrams: HashMap<String, i64>,
     pub bigrams: HashMap<String, i64>,
-    pub words: Vec<String>,
 }
 
 #[pymethods]
 impl Segmentator {
     #[new]
-    #[pyo3(signature = (unigrams_file, bigrams_file, words_file))]
-    pub fn new(unigrams_file: &str, bigrams_file: &str, words_file: &str) -> Self {
+    #[pyo3(signature = (unigrams_file, bigrams_file))]
+    pub fn new(unigrams_file: &str, bigrams_file: &str) -> Self {
         let unigrams = parse(unigrams_file).unwrap();
         let bigrams = parse(bigrams_file).unwrap();
-        let words = parse_words(words_file).unwrap();
-        Self {
-            unigrams,
-            bigrams,
-            words,
-        }
+        Self { unigrams, bigrams }
     }
 
     // Return iterator of words that is the best segmenation of `text`.
@@ -74,34 +66,25 @@ impl Segmentator {
 }
 
 impl Segmentator {
-    fn score(&self, word: &str, previous: Option<&str>) -> f64 {
-        let v = &self.score_bigfloat(word, previous).log10();
-        v.to_f64()
-    }
-
-    pub fn score_bigfloat(&self, word: &str, previous: Option<&str>) -> BigFloat {
-        let total = BigFloat::from_f64(TOTAL);
+    pub fn score(&self, word: &str, previous: Option<&str>) -> f64 {
         match previous {
             None => {
                 if self.unigrams.contains_key(word) {
-                    let unigram_val =
-                        BigFloat::from_i64(self.unigrams.get(word).unwrap().to_owned());
-                    unigram_val / total
+                    (self.unigrams.get(word).unwrap().to_owned() as f64 / (TOTAL as f64)).log10()
                 } else {
-                    let word_len = BigFloat::from_i32(word.len() as i32);
-                    BigFloat::from_i32(10) / (total * BigFloat::from_i32(10).pow(&word_len))
+                    let word_len = word.len() as f64;
+                    1_f64 - (TOTAL.log10() + word_len)
                 }
             }
             Some(previous) => {
                 let bigram = format!("{} {}", previous, word);
-                //debug!("bigram={:?}", bigram);
                 if self.bigrams.contains_key(bigram.as_str()) & self.unigrams.contains_key(previous)
                 {
-                    let bigram_val =
-                        BigFloat::from_i64(self.bigrams.get(bigram.as_str()).unwrap().to_owned());
-                    (bigram_val / total) / self.score_bigfloat(previous, None)
+                    let bigram_prob = self.bigrams.get(bigram.as_str()).unwrap().to_owned() as f64;
+                    let previus_prob = self.unigrams.get(previous).unwrap().to_owned() as f64;
+                    (bigram_prob / previus_prob).log10()
                 } else {
-                    self.score_bigfloat(word, None)
+                    self.score(word, None)
                 }
             }
         }
