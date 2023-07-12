@@ -69,20 +69,21 @@ impl Segmentator {
     pub fn score(&self, word: &str, previous: Option<&str>) -> f64 {
         match previous {
             None => {
-                if self.unigrams.contains_key(word) {
-                    (self.unigrams.get(word).unwrap().to_owned() as f64 / (TOTAL as f64)).log10()
+                if let Some(unigrms_cnt) = self.unigrams.get(word) {
+                    (*unigrms_cnt as f64 / TOTAL).log10()
                 } else {
                     let word_len = word.len() as f64;
+                    // log10 (10 / (total * 10 ** word_len ))
                     1_f64 - (TOTAL.log10() + word_len)
                 }
             }
             Some(previous) => {
                 let bigram = format!("{} {}", previous, word);
-                if self.bigrams.contains_key(bigram.as_str()) & self.unigrams.contains_key(previous)
-                {
-                    let bigram_prob = self.bigrams.get(bigram.as_str()).unwrap().to_owned() as f64;
-                    let previus_prob = self.unigrams.get(previous).unwrap().to_owned() as f64;
-                    (bigram_prob / previus_prob).log10()
+                if let (Some(bigram_cnt), Some(previus_cnt)) = (
+                    self.bigrams.get(bigram.as_str()),
+                    self.unigrams.get(previous),
+                ) {
+                    (*bigram_cnt as f64 / *previus_cnt as f64).log10()
                 } else {
                     self.score(word, None)
                 }
@@ -96,45 +97,47 @@ impl Segmentator {
         text: &str,
         previous: Option<&str>,
     ) -> (f64, Vec<String>) {
-        let res: Vec<String> = Vec::new();
         if text.is_empty() {
-            return (0_f64, res);
-        }
+            let res: Vec<String> = Vec::new();
+            (0_f64, res)
+        } else {
+            let mut current_max = f64::MIN;
+            let mut current_res: Vec<String> = Vec::new();
 
-        let mut current_max = f64::MIN;
-        let mut current_res: Vec<String> = Vec::new();
+            for (prefix, suffix) in devide(text) {
+                debug!("{:?} {:?}", prefix, suffix);
 
-        let mut words: Vec<String> = Vec::new();
-        for (prefix, suffix) in devide(text) {
-            debug!("{:?} {:?}", prefix, suffix);
+                let prefix_score = self.score(prefix, previous);
+                let pair = (suffix.to_string(), prefix.to_string());
 
-            let prev = match previous {
-                None => "<s>",
-                Some(val) => val,
-            };
-            let prefix_score = self.score(prefix, Some(prev));
-            let pair = (suffix.to_string(), prefix.to_string());
-            if !&memo.contains_key(&pair) {
-                let v = (&self.search(memo, suffix, Some(prefix))).to_owned();
-                let _ = &memo.insert(pair.to_owned(), v);
+                let (suffix_score, suffix_words) = match &memo.get(&pair) {
+                    Some((suffix_score, suffix_words)) => {
+                        (suffix_score.to_owned(), suffix_words.to_owned())
+                    }
+                    None => {
+                        let (score, words) = (&self.search(memo, suffix, Some(prefix))).to_owned();
+                        let _ = &memo.insert(pair.to_owned(), (score.to_owned(), words.to_owned()));
+                        (score, words)
+                    }
+                };
+
+                let total_score = suffix_score + prefix_score;
+
+                if total_score > current_max {
+                    current_max = total_score.to_owned();
+                    let mut words: Vec<String> = Vec::with_capacity(suffix_words.capacity() + 1);
+                    words.push(prefix.to_string());
+                    words.extend(suffix_words.into_iter());
+
+                    current_res = words.clone();
+                }
             }
-            //dbg!(&self.memo);
-            let (suffix_score, suffix_words) = (&memo.get(&pair)).unwrap();
-            let total_score = suffix_score + prefix_score;
-            words.clear();
-            words.push(prefix.to_string());
-            words.extend(suffix_words.to_vec().into_iter());
-
-            if total_score > current_max {
-                current_max = total_score.to_owned();
-                current_res = words.clone();
-            }
+            debug!(
+                "ans max are {:?} {:?} for text {:?} {:?}",
+                current_max, current_res, text, previous
+            );
+            (current_max, current_res)
         }
-        debug!(
-            "ans max are {:?} {:?} for text {:?} {:?}",
-            current_max, current_res, text, previous
-        );
-        (current_max, current_res)
     }
 }
 

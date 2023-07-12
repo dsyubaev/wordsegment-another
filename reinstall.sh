@@ -5,3 +5,5 @@ maturin build --release
 
 WHEEL=$(ls target/wheels)
 pip install target/wheels/$WHEEL
+
+python ./benchmarks/run.py
