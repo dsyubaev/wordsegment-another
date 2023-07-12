@@ -2,7 +2,7 @@ mod common;
 
 extern crate env_logger;
 use log::info;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 fn join(result: Vec<&str>) -> String {
     result
@@ -108,7 +108,6 @@ fn test_segment_8() {
 }
 
 #[test]
-#[ignore]
 fn test_segment_time() {
     // using common code.
     let seg = common::segmentator();
