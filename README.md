@@ -5,12 +5,13 @@ Another one implementation of [wordsegment](https://github.com/grantjenks/python
 
 ```bash
 # run specific test
-RUST_LOG=info cargo test --test test_segmentator 'test_segment_81' -- --nocapture
+RUST_LOG=info cargo test --test test_segmentator 'test_segment_time' -- --nocapture
+
 ```
 
 
 ```bash
-maturin develop
+maturin develop -r 
 python
 >>> import wordsegment_another as ws
 >>> seg = ws.Segmentator("./data/unigrams.txt", "./data/bigrams.txt", "./data/words.txt")
