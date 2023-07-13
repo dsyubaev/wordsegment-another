@@ -1,11 +1,10 @@
 use lazy_static::lazy_static;
-use wordsegment_another::Segmentator;
+use wordsegment_another::corpus_loader::Corpus;
 
 lazy_static! {
-    static ref GLOBAL_SEGMENTATOR: Segmentator =
-        Segmentator::new("./data/unigrams.txt", "./data/bigrams.txt",);
+    static ref GLOBAL_CORPUS: Corpus = Corpus::new("./data/unigrams.txt", "./data/bigrams.txt",);
 }
 
-pub fn segmentator() -> &'static Segmentator {
-    &*GLOBAL_SEGMENTATOR
+pub fn load() -> &'static Corpus {
+    &*GLOBAL_CORPUS
 }
