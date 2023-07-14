@@ -4,7 +4,6 @@ from wordsegment import load, segment
 
 NUMBER_OF_RUNS = 20
 
-corpus = wsa.Corpus("./data/unigrams.txt", "./data/bigrams.txt")
 load()
 
 words = [
@@ -26,9 +25,9 @@ words = [
 words_concat = "".join(words)
 
 x = timeit.timeit(
-    "wsa.segment(corpus, words_concat)",
+    "wsa.segment(words_concat)",
     number=NUMBER_OF_RUNS,
-    setup="from __main__ import wsa, corpus, words_concat",
+    setup="from __main__ import wsa, words_concat",
 )
 print(f"wordsegment_another {x:.2f} sec")
 

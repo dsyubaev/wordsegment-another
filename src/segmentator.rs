@@ -1,4 +1,4 @@
-use crate::corpus_loader::Corpus;
+use crate::corpus_loader::{global_corpus, Corpus};
 use log::debug;
 use pyo3::prelude::*;
 use std::cmp::min;
@@ -8,7 +8,7 @@ const TOTAL: f64 = 1024908267229_f64;
 const LIMIT: usize = 24;
 
 #[pyfunction]
-pub fn segment(corpus: &Corpus, text: &str) -> Vec<String> {
+pub fn segment(text: &str) -> Vec<String> {
     debug!("segment called with text={:?}", text);
     let mut memo: HashMap<(String, String), (f64, Vec<String>)> = HashMap::new();
     let mut res: Vec<String> = Vec::new();
@@ -25,19 +25,20 @@ pub fn segment(corpus: &Corpus, text: &str) -> Vec<String> {
         debug!("chunk={:?}", chunk);
 
         prefix.push_str(chunk);
-        let (_, chunk_words) = search(&corpus, &mut memo, prefix.as_str(), None);
+        let (_, chunk_words) = search(&mut memo, prefix.as_str(), None);
         prefix = join_last_n_words(&chunk_words, words_skip_size);
 
         debug!("prefix={:?}", prefix);
         // copy all except last words_skip_size elements
         insert_to_vec(&chunk_words, &mut res, words_skip_size);
     }
-    let (_, prefix_words) = search(&corpus, &mut memo, prefix.as_str(), None);
+    let (_, prefix_words) = search(&mut memo, prefix.as_str(), None);
     insert_to_vec(&prefix_words, &mut res, 0);
     res
 }
 
-pub fn score(corpus: &Corpus, word: &str, previous: Option<&str>) -> f64 {
+pub fn score(word: &str, previous: Option<&str>) -> f64 {
+    let corpus = global_corpus();
     match previous {
         None => {
             if let Some(unigrms_cnt) = corpus.unigrams.get(word) {
@@ -56,14 +57,13 @@ pub fn score(corpus: &Corpus, word: &str, previous: Option<&str>) -> f64 {
             ) {
                 (*bigram_cnt as f64 / *previus_cnt as f64).log10()
             } else {
-                score(corpus, word, None)
+                score(word, None)
             }
         }
     }
 }
 
 fn search(
-    corpus: &Corpus,
     memo: &mut HashMap<(String, String), (f64, Vec<String>)>,
     text: &str,
     previous: Option<&str>,
@@ -78,7 +78,7 @@ fn search(
         for (prefix, suffix) in devide(text) {
             debug!("{:?} {:?}", prefix, suffix);
 
-            let prefix_score = score(corpus, prefix, previous);
+            let prefix_score = score(prefix, previous);
             let pair = (suffix.to_string(), prefix.to_string());
 
             let (suffix_score, suffix_words) = match &memo.get(&pair) {
@@ -86,7 +86,7 @@ fn search(
                     (suffix_score.to_owned(), suffix_words.to_owned())
                 }
                 None => {
-                    let (score, words) = (search(&corpus, memo, suffix, Some(prefix))).to_owned();
+                    let (score, words) = (search(memo, suffix, Some(prefix))).to_owned();
                     let _ = &memo.insert(pair.to_owned(), (score.to_owned(), words.to_owned()));
                     (score, words)
                 }

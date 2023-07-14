@@ -27,9 +27,8 @@ macro_rules! test_segment {
     $(
         #[test]
         fn $name() {
-            let corpus = common::load();
             let result = $value;
-            assert_eq!(segment(corpus, join(result.clone()).as_str()), result);
+            assert_eq!(segment(join(result.clone()).as_str()), result);
 
         }
     )*
@@ -158,7 +157,7 @@ fn test_segment_time() {
             "were", "striking", "thirteen",
         ];
 
-        let _ = segment(corpus,join(result.clone()).as_str());
+        let _ = segment(join(result.clone()).as_str());
         // assert_eq!(, result);
         let duration = start.elapsed();
         acc += duration.as_secs_f32();

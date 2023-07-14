@@ -1,7 +1,17 @@
+use lazy_static::lazy_static;
 use pyo3::prelude::*;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Error};
+
+lazy_static! {
+    pub static ref GLOBAL_CORPUS: Corpus =
+        Corpus::new("./data/unigrams.txt", "./data/bigrams.txt",);
+}
+
+pub fn global_corpus() -> &'static Corpus {
+    &*GLOBAL_CORPUS
+}
 
 #[pyclass]
 pub struct Corpus {
