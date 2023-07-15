@@ -141,8 +141,13 @@ fn search_non_rec(
                     words.extend(suffix_words.into_iter());
 
                     candidates.push((total_score, words));
+
                 }
-                }
+                //TODO здесь макс кандидат положить в мемо
+                } esle {
+                //TODO положить всех кого надо посчитать в очередь
+
+            }
             }
         }
         is_seen.insert(pair);
