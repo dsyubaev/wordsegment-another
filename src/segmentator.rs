@@ -2,7 +2,7 @@ use crate::corpus_loader::{global_corpus, Corpus};
 use log::debug;
 use pyo3::prelude::*;
 use std::cmp::min;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet, VecDeque};
 
 const TOTAL: f64 = 1024908267229_f64;
 const LIMIT: usize = 24;
@@ -111,6 +111,85 @@ fn search(
     }
 }
 
+fn search_non_rec(
+    memo: &mut HashMap<(String, Option<String>), (f64, Vec<String>)>,
+    text: String,
+    previous: Option<String>,
+) -> (f64, Vec<String>) {
+    let mut queue: VecDeque<(String, Option<String>)> = VecDeque::new();
+    let mut is_seen: HashSet<(String, Option<String>)> = HashSet::new();
+    queue.push((text, previous));
+
+    while !queue.is_empty() {
+        let pair = queue.pop_front().unwrap();
+        if t.is_empty() {
+            let res: Vec<String> = Vec::new();
+            &memo.insert(pair.to_owned(), (0_f64, res));
+        } else {
+            if is_seen.contains(&pair) {
+
+                let mut candidates = vec![];
+                for (prefix, suffix) in devide_vec(&pair.0) {
+                    let pair2 = (suffix, Option(prefix));
+                    let (suffix_score, suffix_words) = &memo.get(&pair2).unwrap();
+                    let cast_previus = match pair.1 { Some(s) => Some(s.as_str()), None => None };
+                    let prefix_score = score(prefix.as_str(), cast_previus);
+                    let total_score = suffix_score + prefix_score;
+
+                    let mut words: Vec<String> = Vec::with_capacity(suffix_words.capacity() + 1);
+                    words.push(prefix.to_string());
+                    words.extend(suffix_words.into_iter());
+
+                    candidates.push((total_score, words));
+                }
+                }
+            }
+        }
+        is_seen.insert(pair);
+    }
+    if text.is_empty() {
+        let res: Vec<String> = Vec::new();
+        (0_f64, res)
+    } else {
+        let mut current_max = f64::MIN;
+        let mut current_res: Vec<String> = Vec::new();
+
+        for (prefix, suffix) in devide(text) {
+            debug!("{:?} {:?}", prefix, suffix);
+
+            let prefix_score = score(prefix, previous);
+            let pair = (suffix.to_string(), prefix.to_string());
+
+            let (suffix_score, suffix_words) = match &memo.get(&pair) {
+                Some((suffix_score, suffix_words)) => {
+                    (suffix_score.to_owned(), suffix_words.to_owned())
+                }
+                None => {
+                    let (score, words) = (search(memo, suffix, Some(prefix))).to_owned();
+                    let _ = &memo.insert(pair.to_owned(), (score.to_owned(), words.to_owned()));
+                    (score, words)
+                }
+            };
+
+            let total_score = suffix_score + prefix_score;
+
+            if total_score > current_max {
+                current_max = total_score.to_owned();
+                let mut words: Vec<String> = Vec::with_capacity(suffix_words.capacity() + 1);
+                words.push(prefix.to_string());
+                words.extend(suffix_words.into_iter());
+
+                current_res = words.clone();
+            }
+        }
+        debug!(
+            "ans max are {:?} {:?} for text {:?} {:?}",
+            current_max, current_res, text, previous
+        );
+        (current_max, current_res)
+    }
+}
+
 /// Return `text` lower-cased with non-alphanumeric characters removed.
 pub fn clean(text: &str) -> String {
     text.to_lowercase()
@@ -159,6 +238,17 @@ pub fn devide<'a>(text: &'a str) -> impl Iterator<Item = (&str, &str)> {
 
     (1..split_size).map(|i| (&text[0..i], &text[i..]))
 }
+
+pub fn devide_vec(text: &str) -> Vec<(String, String)> {
+    let split_size = min(LIMIT, text.len()) + 1;
+    let mut res = vec![];
+    for i in 1..split_size {
+        let val = (text[0..i].to_string(), text[i..].to_string());
+        res.push(val);
+    }
+    res
+}
+
 
 #[cfg(test)]
 mod tests {
