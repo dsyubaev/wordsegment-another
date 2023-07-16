@@ -10,7 +10,7 @@ const LIMIT: usize = 24;
 #[pyfunction]
 pub fn segment(text: &str) -> Vec<String> {
     debug!("segment called with text={:?}", text);
-    let mut memo: HashMap<(String, String), (f64, Vec<String>)> = HashMap::new();
+    let mut memo: HashMap<(String, Option<String>), (f64, Vec<String>)> = HashMap::new();
     let mut res: Vec<String> = Vec::new();
 
     let clean_text = clean(text);
@@ -25,16 +25,23 @@ pub fn segment(text: &str) -> Vec<String> {
         debug!("chunk={:?}", chunk);
 
         prefix.push_str(chunk);
-        let (_, chunk_words) = search(&mut memo, prefix.as_str(), None);
+        let (_, chunk_words) = search_non_rec(&mut memo, prefix, None);
         prefix = join_last_n_words(&chunk_words, words_skip_size);
 
         debug!("prefix={:?}", prefix);
         // copy all except last words_skip_size elements
         insert_to_vec(&chunk_words, &mut res, words_skip_size);
     }
-    let (_, prefix_words) = search(&mut memo, prefix.as_str(), None);
+    let (_, prefix_words) = search_non_rec(&mut memo, prefix, None);
     insert_to_vec(&prefix_words, &mut res, 0);
     res
+}
+
+pub fn score_from_string(word: String, previous: Option<String>) -> f64 {
+    match previous {
+        None => score(word.as_str(), None),
+        Some(val) => score(word.as_str(), Some(val.as_str())),
+    }
 }
 
 pub fn score(word: &str, previous: Option<&str>) -> f64 {
@@ -118,81 +125,51 @@ fn search_non_rec(
 ) -> (f64, Vec<String>) {
     let mut queue: VecDeque<(String, Option<String>)> = VecDeque::new();
     let mut is_seen: HashSet<(String, Option<String>)> = HashSet::new();
-    queue.push((text, previous));
+    queue.push_front((text.to_owned(), previous.to_owned()));
 
     while !queue.is_empty() {
         let pair = queue.pop_front().unwrap();
-        if t.is_empty() {
+        if pair.0.is_empty() {
             let res: Vec<String> = Vec::new();
             &memo.insert(pair.to_owned(), (0_f64, res));
         } else {
             if is_seen.contains(&pair) {
-
                 let mut candidates = vec![];
-                for (prefix, suffix) in devide_vec(&pair.0) {
-                    let pair2 = (suffix, Option(prefix));
+                let cast_previous = pair.1.to_owned();
+                for (prefix, suffix) in devide_vec(&pair.0.to_owned()) {
+                    let pair2 = (suffix, Some(prefix.to_owned()));
                     let (suffix_score, suffix_words) = &memo.get(&pair2).unwrap();
-                    let cast_previus = match pair.1 { Some(s) => Some(s.as_str()), None => None };
-                    let prefix_score = score(prefix.as_str(), cast_previus);
+
+                    let prefix_score =
+                        score_from_string(prefix.to_owned(), cast_previous.to_owned());
                     let total_score = suffix_score + prefix_score;
 
                     let mut words: Vec<String> = Vec::with_capacity(suffix_words.capacity() + 1);
                     words.push(prefix.to_string());
-                    words.extend(suffix_words.into_iter());
+                    for s in suffix_words {
+                        words.push(s.to_string());
+                    }
 
                     candidates.push((total_score, words));
-
                 }
-                //TODO здесь макс кандидат положить в мемо
-                } esle {
-                //TODO положить всех кого надо посчитать в очередь
-
-            }
+                let x = candidates
+                    .iter()
+                    .max_by(|a, b| a.0.partial_cmp(&b.0).unwrap())
+                    .unwrap();
+                &memo.insert(pair.to_owned(), x.to_owned());
+            } else {
+                for (prefix, suffix) in devide_vec(&pair.0) {
+                    let pair2 = (suffix, Some(prefix));
+                    queue.push_front(pair2);
+                }
+                queue.push_back(pair.to_owned());
             }
         }
         is_seen.insert(pair);
     }
-    if text.is_empty() {
-        let res: Vec<String> = Vec::new();
-        (0_f64, res)
-    } else {
-        let mut current_max = f64::MIN;
-        let mut current_res: Vec<String> = Vec::new();
-
-        for (prefix, suffix) in devide(text) {
-            debug!("{:?} {:?}", prefix, suffix);
-
-            let prefix_score = score(prefix, previous);
-            let pair = (suffix.to_string(), prefix.to_string());
-
-            let (suffix_score, suffix_words) = match &memo.get(&pair) {
-                Some((suffix_score, suffix_words)) => {
-                    (suffix_score.to_owned(), suffix_words.to_owned())
-                }
-                None => {
-                    let (score, words) = (search(memo, suffix, Some(prefix))).to_owned();
-                    let _ = &memo.insert(pair.to_owned(), (score.to_owned(), words.to_owned()));
-                    (score, words)
-                }
-            };
-
-            let total_score = suffix_score + prefix_score;
-
-            if total_score > current_max {
-                current_max = total_score.to_owned();
-                let mut words: Vec<String> = Vec::with_capacity(suffix_words.capacity() + 1);
-                words.push(prefix.to_string());
-                words.extend(suffix_words.into_iter());
-
-                current_res = words.clone();
-            }
-        }
-        debug!(
-            "ans max are {:?} {:?} for text {:?} {:?}",
-            current_max, current_res, text, previous
-        );
-        (current_max, current_res)
-    }
+    let k = (text, previous);
+    let res = &memo.get(&k).unwrap();
+    res.to_owned().to_owned().to_owned()
 }
 
 /// Return `text` lower-cased with non-alphanumeric characters removed.
@@ -253,7 +230,6 @@ pub fn devide_vec(text: &str) -> Vec<(String, String)> {
     }
     res
 }
-
 
 #[cfg(test)]
 mod tests {
