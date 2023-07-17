@@ -15,6 +15,12 @@ struct Node {
 
 #[pyfunction]
 pub fn segment(text: &str) -> Vec<String> {
+    let selector = 1;
+    let search_slected = match selector {
+        0 => search,
+        _ => search_non_rec,
+    };
+
     debug!("segment called with text={:?}", text);
     let mut memo: HashMap<Node, (f64, Vec<String>)> = HashMap::new();
     let mut res: Vec<String> = Vec::new();
@@ -31,14 +37,14 @@ pub fn segment(text: &str) -> Vec<String> {
         debug!("chunk={:?}", chunk);
 
         prefix.push_str(chunk);
-        let (_, chunk_words) = search_non_rec(&mut memo, prefix, None);
+        let (_, chunk_words) = search_slected(&mut memo, prefix.as_str(), None);
         prefix = join_last_n_words(&chunk_words, words_skip_size);
 
         debug!("prefix={:?}", prefix);
         // copy all except last words_skip_size elements
         insert_to_vec(&chunk_words, &mut res, words_skip_size);
     }
-    let (_, prefix_words) = search_non_rec(&mut memo, prefix, None);
+    let (_, prefix_words) = search_slected(&mut memo, prefix.as_str(), None);
     insert_to_vec(&prefix_words, &mut res, 0);
     res
 }
@@ -92,7 +98,10 @@ fn search(
             debug!("{:?} {:?}", prefix, suffix);
 
             let prefix_score = score(prefix, previous);
-            let pair = Node { text: suffix.to_string(), previous: Some(prefix.to_string()) };
+            let pair = Node {
+                text: suffix.to_string(),
+                previous: Some(prefix.to_string()),
+            };
 
             let (suffix_score, suffix_words) = match &memo.get(&pair) {
                 Some((suffix_score, suffix_words)) => {
@@ -124,39 +133,55 @@ fn search(
     }
 }
 
+/// Тот же поиск здесь 2 раза приходится делать обход потомков узла
+/// 1 ый раз что бы понять кого посчитать
+/// 2ой раз что бы собрать посчитанные значения
 fn search_non_rec(
     memo: &mut HashMap<Node, (f64, Vec<String>)>,
-    text: String,
-    previous: Option<String>,
+    text_: &str,
+    previous_: Option<&str>,
 ) -> (f64, Vec<String>) {
+    let text = text_.to_string();
+    let previous = match previous_ {
+        Some(s) => Some(s.to_string()),
+        None => None,
+    };
     let mut queue: VecDeque<Node> = VecDeque::new();
     let mut is_seen: HashSet<Node> = HashSet::new();
-    let init_node = Node {text: text.to_owned(), previous: previous.to_owned()};
+    let init_node = Node {
+        text: text.to_owned(),
+        previous: previous.to_owned(),
+    };
     queue.push_front(init_node.to_owned());
 
     while !queue.is_empty() {
         //debug!("queue.pop_front = {}")
-        let pair = queue.pop_front().unwrap();
-
-        if pair.text.is_empty() {
+        let node = queue.pop_front().unwrap();
+        if *&memo.contains_key(&node) {
+            continue
+        }
+        if node.text.is_empty() {
             let res: Vec<String> = Vec::new();
-            let _ = &memo.insert(pair.to_owned(), (0_f64, res));
+            let _ = &memo.insert(node.to_owned(), (0_f64, res));
         } else {
-            if is_seen.contains(&pair) {
-                let mut candidates = vec![];
-                let cast_previous = pair.previous.to_owned();
-                for (prefix, suffix) in devide_vec(&pair.text.to_owned()) {
-                    let pair2 = Node {text: suffix, previous: Some(prefix.to_owned())};
-                    // тут выдает панику хотя если is_seen то должны быть уже в этом сете
+            if is_seen.contains(&node) {
+                // Node was visited collect all childs from memo and calculate result
+                let mut childs_score = vec![];
+                let cast_previous = node.previous.to_owned();
+                for (prefix, suffix) in devide_vec(&node.text.to_owned()) {
+                    let node_child = Node {
+                        text: suffix,
+                        previous: Some(prefix.to_owned()),
+                    };
 
-                    let (suffix_score, suffix_words) = match &memo.get(&pair2) {
+                    let (suffix_score, suffix_words) = match &memo.get(&node_child) {
                         Some(val) => val,
                         _ => {
                             debug!(
                                 "pair2={:?},\nqueue={:?}, \nis_seen={:?},\nmemo={:?}",
-                                pair2, queue, is_seen, memo
+                                node_child, queue, is_seen, memo
                             );
-                            panic!("AAA")
+                            panic!("You should be here")
                         }
                     };
 
@@ -170,22 +195,26 @@ fn search_non_rec(
                         words.push(s.to_string());
                     }
 
-                    candidates.push((total_score, words));
+                    childs_score.push((total_score, words));
                 }
-                let x = candidates
+                // get_max score for childs
+                let best_split = childs_score
                     .iter()
                     .max_by(|a, b| a.0.partial_cmp(&b.0).unwrap())
                     .unwrap();
-                let _ = &memo.insert(pair.to_owned(), x.to_owned());
+                let _ = &memo.insert(node.to_owned(), best_split.to_owned());
             } else {
-                queue.push_front(pair.to_owned());
+                // Node is not visited. Push it back and it's children to the queue
+                queue.push_front(node.to_owned());
 
-                for (prefix, suffix) in devide_vec(&pair.text) {
-                    let pair2 = Node {text: suffix,previous: Some(prefix)};
-                    queue.push_front(pair2);
+                for (prefix, suffix) in devide_vec(&node.text) {
+                    queue.push_front(Node {
+                        text: suffix,
+                        previous: Some(prefix),
+                    });
                 }
             }
-            is_seen.insert(pair);
+            is_seen.insert(node);
         }
     }
     let res = &memo.get(&init_node).unwrap();
