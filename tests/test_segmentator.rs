@@ -143,6 +143,7 @@ test_segment! {
 }
 
 #[test]
+//#[ignore]
 fn test_segment_time() {
     // using common code.
     let corpus = common::load();
@@ -165,4 +166,19 @@ fn test_segment_time() {
         info!("Done test duration={:?}", duration);
     }
     info!("Avg time={:?}", acc / n as f32);
+}
+
+
+#[test]
+fn test_segment_small() {
+    // using common code.
+    let corpus = common::load();
+    env_logger::builder().format_timestamp_millis().init();
+    info!("Start test");
+
+    let result = vec![
+        "it", "was"
+    ];
+    assert_eq!(segment(join(result.clone()).as_str()), result);
+
 }

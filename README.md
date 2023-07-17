@@ -5,7 +5,7 @@ Another one implementation of [wordsegment](https://github.com/grantjenks/python
 
 ```bash
 # run specific test
-RUST_LOG=info cargo test --test test_segmentator 'test_segment_time' -- --nocapture
+RUST_LOG=info cargo test --test test_segmentator 'test_segment_small' -- --nocapture
 
 ```
 

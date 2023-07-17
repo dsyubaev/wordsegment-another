@@ -128,7 +128,9 @@ fn search_non_rec(
     queue.push_front((text.to_owned(), previous.to_owned()));
 
     while !queue.is_empty() {
+        //debug!("queue.pop_front = {}")
         let pair = queue.pop_front().unwrap();
+
         if pair.0.is_empty() {
             let res: Vec<String> = Vec::new();
             &memo.insert(pair.to_owned(), (0_f64, res));
@@ -138,7 +140,12 @@ fn search_non_rec(
                 let cast_previous = pair.1.to_owned();
                 for (prefix, suffix) in devide_vec(&pair.0.to_owned()) {
                     let pair2 = (suffix, Some(prefix.to_owned()));
-                    let (suffix_score, suffix_words) = &memo.get(&pair2).unwrap();
+                    // тут выдает панику хотя если is_seen то должны быть уже в этом сете
+
+                    let (suffix_score, suffix_words) = match &memo.get(&pair2) {
+                        Some(val) => val,
+                        _ => {debug!("pair2={:?},\nqueue={:?}, \nis_seen={:?},\nmemo={:?}",
+                            pair2, queue, is_seen, memo); panic!("AAA") }};
 
                     let prefix_score =
                         score_from_string(prefix.to_owned(), cast_previous.to_owned());
@@ -158,14 +165,15 @@ fn search_non_rec(
                     .unwrap();
                 &memo.insert(pair.to_owned(), x.to_owned());
             } else {
+                queue.push_front(pair.to_owned());
+
                 for (prefix, suffix) in devide_vec(&pair.0) {
                     let pair2 = (suffix, Some(prefix));
                     queue.push_front(pair2);
                 }
-                queue.push_back(pair.to_owned());
             }
+            is_seen.insert(pair);
         }
-        is_seen.insert(pair);
     }
     let k = (text, previous);
     let res = &memo.get(&k).unwrap();
