@@ -168,7 +168,6 @@ fn test_segment_time() {
     info!("Avg time={:?}", acc / n as f32);
 }
 
-
 #[test]
 fn test_segment_small() {
     // using common code.
@@ -176,9 +175,6 @@ fn test_segment_small() {
     env_logger::builder().format_timestamp_millis().init();
     info!("Start test");
 
-    let result = vec![
-        "it", "was"
-    ];
+    let result = vec!["it", "was"];
     assert_eq!(segment(join(result.clone()).as_str()), result);
-
 }
