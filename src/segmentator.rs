@@ -25,14 +25,14 @@ pub fn segment(text: &str) -> Vec<String> {
         debug!("chunk={:?}", chunk);
 
         prefix.push_str(chunk);
-        let (_, chunk_words) = search_non_rec(&mut memo, prefix, None);
+        let (_, chunk_words) = search(&mut memo, prefix.as_str(), None);
         prefix = join_last_n_words(&chunk_words, words_skip_size);
 
         debug!("prefix={:?}", prefix);
         // copy all except last words_skip_size elements
         insert_to_vec(&chunk_words, &mut res, words_skip_size);
     }
-    let (_, prefix_words) = search_non_rec(&mut memo, prefix, None);
+    let (_, prefix_words) = search(&mut memo, prefix.as_str(), None);
     insert_to_vec(&prefix_words, &mut res, 0);
     res
 }
@@ -71,7 +71,7 @@ pub fn score(word: &str, previous: Option<&str>) -> f64 {
 }
 
 fn search(
-    memo: &mut HashMap<(String, String), (f64, Vec<String>)>,
+    memo: &mut HashMap<(String, Option<String>), (f64, Vec<String>)>,
     text: &str,
     previous: Option<&str>,
 ) -> (f64, Vec<String>) {
@@ -86,7 +86,7 @@ fn search(
             debug!("{:?} {:?}", prefix, suffix);
 
             let prefix_score = score(prefix, previous);
-            let pair = (suffix.to_string(), prefix.to_string());
+            let pair = (suffix.to_string(), Some(prefix.to_string()));
 
             let (suffix_score, suffix_words) = match &memo.get(&pair) {
                 Some((suffix_score, suffix_words)) => {
