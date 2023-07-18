@@ -9,6 +9,8 @@ RUST_LOG=info cargo test --test test_segmentator 'test_segment_time' -- --nocapt
 
 RUST_LOG=debug cargo test --test test_segmentator 'test_segment_small' -- --nocapture
 
+RUST_LOG=debug cargo test --test test_class 'test_segment_small' -- --nocapture
+
 ```
 
 

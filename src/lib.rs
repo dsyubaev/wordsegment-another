@@ -1,8 +1,9 @@
-pub mod corpus_loader;
+pub mod corpus;
+pub mod searchers;
 pub mod segmentator;
 
-use crate::corpus_loader::Corpus;
-use crate::segmentator::segment;
+use crate::corpus::Corpus;
+//use crate::segmentator::segment;
 use pyo3::prelude::*;
 
 // use std::sync::Arc;
@@ -14,6 +15,6 @@ use pyo3::prelude::*;
 #[pymodule]
 fn wordsegment_another(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_class::<Corpus>()?;
-    m.add_function(wrap_pyfunction!(segment, m)?)?;
+    //m.add_function(wrap_pyfunction!(segment, m)?)?;
     Ok(())
 }

@@ -1,5 +1,5 @@
 use lazy_static::lazy_static;
-use wordsegment_another::corpus_loader::Corpus;
+use wordsegment_another::corpus::Corpus;
 
 lazy_static! {
     static ref GLOBAL_CORPUS: Corpus = Corpus::new("./data/unigrams.txt", "./data/bigrams.txt",);

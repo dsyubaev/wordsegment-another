@@ -1,0 +1,62 @@
+warning: unused import: `Corpus`
+ --> src/segmentator.rs:1:43
+  |
+1 | use crate::corpus_loader::{global_corpus, Corpus};
+  |                                           ^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused variable: `current_max`
+  --> src/segmentator.rs:79:17
+   |
+79 |         let mut current_max = f64::MIN;
+   |                 ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_current_max`
+   |
+   = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `current_res`
+  --> src/segmentator.rs:80:17
+   |
+80 |         let mut current_res: Vec<String> = Vec::new();
+   |                 ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_current_res`
+
+warning: variable does not need to be mutable
+  --> src/segmentator.rs:79:13
+   |
+79 |         let mut current_max = f64::MIN;
+   |             ----^^^^^^^^^^^
+   |             |
+   |             help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` on by default
+
+warning: variable does not need to be mutable
+  --> src/segmentator.rs:80:13
+   |
+80 |         let mut current_res: Vec<String> = Vec::new();
+   |             ----^^^^^^^^^^^
+   |             |
+   |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> src/segmentator.rs:96:17
+   |
+96 |             let mut memo_clone = memo.clone();
+   |                 ----^^^^^^^^^^
+   |                 |
+   |                 help: remove this `mut`
+
+warning: `wordsegment-another` (lib) generated 6 warnings
+warning: unused variable: `corpus`
+   --> tests/test_segmentator.rs:148:9
+    |
+148 |     let corpus = common::load();
+    |         ^^^^^^ help: if this is intentional, prefix it with an underscore: `_corpus`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: `wordsegment-another` (test "test_segmentator") generated 1 warning
+    Finished test [unoptimized + debuginfo] target(s) in 0.27s
+     Running tests/test_segmentator.rs (target/debug/deps/test_segmentator-29b2453d91761573)
+
+running 1 test
