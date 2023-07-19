@@ -8,3 +8,11 @@ lazy_static! {
 pub fn load() -> &'static Scorer {
     &*GLOBAL_SCORER
 }
+
+pub fn join(result: Vec<&str>) -> String {
+    result
+        .into_iter()
+        .map(|x| x.to_string())
+        .collect::<Vec<String>>()
+        .join("")
+}
