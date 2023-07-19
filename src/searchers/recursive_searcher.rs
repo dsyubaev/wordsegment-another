@@ -1,43 +1,21 @@
-use crate::corpus::Corpus;
+use crate::scorer::Scorer;
 use crate::searchers;
-use crate::searchers::{Node, LIMIT, TOTAL};
+use crate::searchers::{Node, LIMIT};
 use log::debug;
 use std::cmp::min;
 use std::collections::HashMap;
 
 pub struct RecursiveSearcher<'a> {
-    corpus: &'a Corpus,
+    corpus: &'a Scorer,
 }
 
 impl<'a> RecursiveSearcher<'a> {
-    pub fn new(corpus: &'a Corpus) -> RecursiveSearcher<'a> {
+    pub fn new(corpus: &'a Scorer) -> RecursiveSearcher<'a> {
         RecursiveSearcher { corpus: &corpus }
     }
 
     fn score(&self, word: &str, previous: Option<&str>) -> f64 {
-        let corpus = &self.corpus;
-        match previous {
-            None => {
-                if let Some(unigrms_cnt) = corpus.unigrams.get(word) {
-                    (*unigrms_cnt as f64 / TOTAL).log10()
-                } else {
-                    let word_len = word.len() as f64;
-                    // log10 (10 / (total * 10 ** word_len ))
-                    1_f64 - (TOTAL.log10() + word_len)
-                }
-            }
-            Some(previous) => {
-                let bigram = format!("{} {}", previous, word);
-                if let (Some(bigram_cnt), Some(previus_cnt)) = (
-                    corpus.bigrams.get(bigram.as_str()),
-                    corpus.unigrams.get(previous),
-                ) {
-                    (*bigram_cnt as f64 / *previus_cnt as f64).log10()
-                } else {
-                    self.score(word, None)
-                }
-            }
-        }
+        self.corpus.score(word, previous)
     }
 }
 impl<'a> searchers::Searcher for RecursiveSearcher<'a> {
@@ -96,7 +74,6 @@ impl<'a> searchers::Searcher for RecursiveSearcher<'a> {
 
 /// Yield `(prefix, suffix)` pairs from `text`.
 ///     def divide(self, text):
-///
 ///         for pos in range(1, min(len(text), self.limit) + 1):
 ///             yield (text[:pos], text[pos:])
 pub fn devide<'a>(text: &'a str) -> impl Iterator<Item = (&str, &str)> {

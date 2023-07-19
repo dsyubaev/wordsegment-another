@@ -5,7 +5,6 @@ pub use self::queue_searcher::QueueSearcher;
 pub use self::recursive_searcher::RecursiveSearcher;
 use std::collections::HashMap;
 
-const TOTAL: f64 = 1024908267229_f64;
 const LIMIT: usize = 24;
 
 #[derive(Eq, Hash, PartialEq, Clone, Debug)]

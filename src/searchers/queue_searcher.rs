@@ -1,48 +1,22 @@
-use crate::corpus::Corpus;
+use crate::scorer::Scorer;
 use crate::searchers;
-use crate::searchers::{Node, LIMIT, TOTAL};
+use crate::searchers::{Node, LIMIT};
 use log::debug;
 use std::cmp::min;
 use std::collections::{HashMap, HashSet, VecDeque};
 
 pub struct QueueSearcher<'a> {
-    corpus: &'a Corpus,
+    corpus: &'a Scorer,
 }
 impl<'a> QueueSearcher<'a> {
-    pub fn new(corpus: &'a Corpus) -> QueueSearcher<'a> {
+    pub fn new(corpus: &'a Scorer) -> QueueSearcher<'a> {
         QueueSearcher { corpus: &corpus }
     }
 
     fn score_from_string(&self, word: String, previous: Option<String>) -> f64 {
         match previous {
-            None => self.score(word.as_str(), None),
-            Some(val) => self.score(word.as_str(), Some(val.as_str())),
-        }
-    }
-
-    fn score(&self, word: &str, previous: Option<&str>) -> f64 {
-        let corpus = &self.corpus;
-        match previous {
-            None => {
-                if let Some(unigrms_cnt) = corpus.unigrams.get(word) {
-                    (*unigrms_cnt as f64 / TOTAL).log10()
-                } else {
-                    let word_len = word.len() as f64;
-                    // log10 (10 / (total * 10 ** word_len ))
-                    1_f64 - (TOTAL.log10() + word_len)
-                }
-            }
-            Some(previous) => {
-                let bigram = format!("{} {}", previous, word);
-                if let (Some(bigram_cnt), Some(previus_cnt)) = (
-                    corpus.bigrams.get(bigram.as_str()),
-                    corpus.unigrams.get(previous),
-                ) {
-                    (*bigram_cnt as f64 / *previus_cnt as f64).log10()
-                } else {
-                    self.score(word, None)
-                }
-            }
+            None => self.corpus.score(word.as_str(), None),
+            Some(val) => self.corpus.score(word.as_str(), Some(val.as_str())),
         }
     }
 }
@@ -145,4 +119,24 @@ pub fn devide_vec(text: &str) -> Vec<(String, String)> {
         res.push(val);
     }
     res
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_devide() {
+        let b: Vec<(String, String)> = devide_vec("ab");
+        assert_eq!(
+            b,
+            [
+                (String::from("a"), String::from("b")),
+                (String::from("ab"), String::from("")),
+            ]
+        );
+
+        //let b: Vec<(&str, &str)> = devide_vec("abc");
+        //assert_eq!(b, [("a", "bc"), ("ab", "c"), ("abc", "")])
+    }
 }

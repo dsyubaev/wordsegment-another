@@ -3,7 +3,8 @@ mod common;
 extern crate env_logger;
 use log::info;
 use std::time::Instant;
-use wordsegment_another::segmentator::segment;
+use wordsegment_another::searchers::{QueueSearcher, RecursiveSearcher};
+use wordsegment_another::segmentator::Segmentation;
 
 fn join(result: Vec<&str>) -> String {
     result
@@ -13,22 +14,37 @@ fn join(result: Vec<&str>) -> String {
         .join("")
 }
 
-// #[test]
-// fn test_segment_0() {
-//     // using common code.
-//     let corpus = common::load();
-//     let result = vec!["choose", "spain"];
-//
-//     assert_eq!(segment(corpus, join(result.clone()).as_str()), result);
-// }
+#[test]
+fn test_segment_recursive() {
+    let scorer = common::load();
+    let searcher = RecursiveSearcher::new(scorer);
+    let seg = Segmentation::new(&searcher);
+    let result = vec!["choose", "spain"];
+
+    assert_eq!(seg.segment(join(result.clone()).as_str()), result);
+}
+
+#[test]
+fn test_segment_queue() {
+    let scorer = common::load();
+    let searcher = QueueSearcher::new(scorer);
+    let seg = Segmentation::new(&searcher);
+    let result = vec!["choose", "spain"];
+
+    assert_eq!(seg.segment(join(result.clone()).as_str()), result);
+}
 
 macro_rules! test_segment {
     ($($name:ident: $value:expr,)*) => {
     $(
         #[test]
         fn $name() {
+            let scorer = common::load();
+            let searcher = RecursiveSearcher::new(scorer);
+            let seg = Segmentation::new(&searcher);
+
             let result = $value;
-            assert_eq!(segment(join(result.clone()).as_str()), result);
+            assert_eq!(seg.segment(join(result.clone()).as_str()), result);
 
         }
     )*
@@ -146,7 +162,9 @@ test_segment! {
 //#[ignore]
 fn test_segment_time() {
     // using common code.
-    let corpus = common::load();
+    let scorer = common::load();
+    let searcher = RecursiveSearcher::new(scorer);
+    let seg = Segmentation::new(&searcher);
     env_logger::builder().format_timestamp_millis().init();
     info!("Done init segmentator");
     let mut acc = 0.0;
@@ -158,7 +176,7 @@ fn test_segment_time() {
             "were", "striking", "thirteen",
         ];
 
-        let _ = segment(join(result.clone()).as_str());
+        let _ = seg.segment(join(result.clone()).as_str());
         // assert_eq!(, result);
         let duration = start.elapsed();
         acc += duration.as_secs_f32();
@@ -171,10 +189,12 @@ fn test_segment_time() {
 #[test]
 fn test_segment_small() {
     // using common code.
-    let corpus = common::load();
-    env_logger::builder().format_timestamp_millis().init();
+    let scorer = common::load();
+    let searcher = RecursiveSearcher::new(scorer);
+    let seg = Segmentation::new(&searcher);
+    //env_logger::builder().format_timestamp_millis().init();
     info!("Start test");
 
     let result = vec!["it", "was"];
-    assert_eq!(segment(join(result.clone()).as_str()), result);
+    assert_eq!(seg.segment(join(result.clone()).as_str()), result);
 }

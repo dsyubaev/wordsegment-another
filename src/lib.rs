@@ -1,8 +1,8 @@
-pub mod corpus;
+pub mod scorer;
 pub mod searchers;
 pub mod segmentator;
 
-use crate::corpus::Corpus;
+use crate::scorer::Scorer;
 //use crate::segmentator::segment;
 use pyo3::prelude::*;
 
@@ -14,7 +14,7 @@ use pyo3::prelude::*;
 /// import the module.
 #[pymodule]
 fn wordsegment_another(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
-    m.add_class::<Corpus>()?;
+    m.add_class::<Scorer>()?;
     //m.add_function(wrap_pyfunction!(segment, m)?)?;
     Ok(())
 }
